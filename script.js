@@ -29,7 +29,10 @@ async function fetchMakes(year) {
     const url = `${BASE_URL}?cmd=getMakes&year=${year}&sold_in_us=1`;
     const response = await fetch(url);
     const dataText = await response.text();
-    const trimmed = dataText.trim(); const jsonStr = trimmed.substring(2, trimmed.length - 2); const data = JSON.parse(jsonStr);
+    const startIndex = dataText.indexOf('(');
+    const endIndex = dataText.lastIndexOf(')');
+    const jsonString = dataText.substring(startIndex + 1, endIndex);
+    const data = JSON.parse(jsonString);
     return data.Makes || [];
 }
 
@@ -37,7 +40,10 @@ async function fetchModels(year, make) {
     const url = `${BASE_URL}?cmd=getModels&make=${encodeURIComponent(make)}&year=${year}&sold_in_us=1`;
     const response = await fetch(url);
     const dataText = await response.text();
-    const trimmed = dataText.trim(); const jsonStr = trimmed.substring(2, trimmed.length - 2); const data = JSON.parse(jsonStr);
+    const startIndex = dataText.indexOf('(');
+    const endIndex = dataText.lastIndexOf(')');
+    const jsonString = dataText.substring(startIndex + 1, endIndex);
+    const data = JSON.parse(jsonString);
     return data.Models || [];
 }
 
@@ -45,7 +51,10 @@ async function fetchTrims(year, make, model) {
     const url = `${BASE_URL}?cmd=getTrims&year=${year}&make=${encodeURIComponent(make)}&model=${encodeURIComponent(model)}&sold_in_us=1`;
     const response = await fetch(url);
     const dataText = await response.text();
-    const trimmed = dataText.trim(); const jsonStr = trimmed.substring(2, trimmed.length - 2); const data = JSON.parse(jsonStr);
+    const startIndex = dataText.indexOf('(');
+    const endIndex = dataText.lastIndexOf(')');
+    const jsonString = dataText.substring(startIndex + 1, endIndex);
+    const data = JSON.parse(jsonString);
     return data.Trims || [];
 }
 
