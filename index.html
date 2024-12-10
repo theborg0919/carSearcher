@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/> 
+    <title>Car Finder</title>
+    <link rel="stylesheet" href="styles.css"/>
+</head>
+<body>
+    <header>
+        <h1>Car Finder</h1>
+    </header>
+    
+    <main>
+        <section id="search-section">
+            <h2>Find Your Car</h2>
+            <form id="car-form">
+                <label for="make-select">Make:</label>
+                <select id="make-select" name="make" required>
+                    <option value="">Loading makes...</option>
+                </select>
+                
+                <label for="model-select">Model:</label>
+                <select id="model-select" name="model" required disabled>
+                    <option value="">Select a make first</option>
+                </select>
+                
+                <label for="year-select">Year:</label>
+                <select id="year-select" name="year" required disabled>
+                    <option value="">Select a model first</option>
+                </select>
+                
+                <button type="submit">Search</button>
+            </form>
+        </section>
+        
+        <section id="results-section" class="hidden">
+            <h2>Car Details</h2>
+            <div id="car-info"></div>
+            <button id="compare-button">Add to Compare</button>
+            <button id="search-again">Search Again</button>
+        </section>
+        
+        <section id="compare-section" class="hidden">
+            <h2>Compare Cars</h2>
+            <div id="compare-table-container">
+            </div>
+            <button id="clear-compare">Clear Comparison</button>
+        </section>
+    </main>
+
+    <footer>
+        <p>Powered by Edmunds API</p>
+    </footer>
+    
+    <script src="script.js"></script>
+</body>
+</html>
