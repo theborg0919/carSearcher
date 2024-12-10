@@ -1,8 +1,9 @@
-const apiKey = "YOUR_EDMUNDS_API_KEY";
+// Documentation: https://www.carqueryapi.com/documentation/api-usage/
+const BASE_URL = "https://www.carqueryapi.com/api/0.3/";
 
+const yearSelect = document.getElementById('year-select');
 const makeSelect = document.getElementById('make-select');
 const modelSelect = document.getElementById('model-select');
-const yearSelect = document.getElementById('year-select');
 const carForm = document.getElementById('car-form');
 const resultsSection = document.getElementById('results-section');
 const carInfoDiv = document.getElementById('car-info');
@@ -14,140 +15,146 @@ const clearCompareBtn = document.getElementById('clear-compare');
 
 let compareCars = [];
 
-async function fetchMakes() {
-    const url = `https://api.edmunds.com/api/vehicle/v2/makes?fmt=json&api_key=${apiKey}`;
+function initYears() {
+    const currentYear = new Date().getFullYear();
+    let options = `<option value="">Select a Year</option>`;
+    for (let y = currentYear; y >= 1980; y--) {
+        options += `<option value="${y}">${y}</option>`;
+    }
+    yearSelect.innerHTML = options;
+}
+initYears();
+
+async function fetchMakes(year) {
+    const url = `${BASE_URL}?cmd=getMakes&year=${year}&sold_in_us=1`;
     const response = await fetch(url);
-    const data = await response.json();
-    return data.makes || [];
+    const dataText = await response.text();
+    const data = JSON.parse(dataText.replace(/^\?\(|\);$/g, ''));
+    return data.Makes || [];
 }
 
-async function fetchModels(make) {
-    const url = `https://api.edmunds.com/api/vehicle/v2/${make}/models?fmt=json&api_key=${apiKey}`;
+async function fetchModels(year, make) {
+    const url = `${BASE_URL}?cmd=getModels&make=${encodeURIComponent(make)}&year=${year}&sold_in_us=1`;
     const response = await fetch(url);
-    const data = await response.json();
-    return data.models || [];
+    const dataText = await response.text();
+    const data = JSON.parse(dataText.replace(/^\?\(|\);$/g, ''));
+    return data.Models || [];
 }
 
-async function fetchYears(make, model) {
-    const url = `https://api.edmunds.com/api/vehicle/v2/${make}/${model}?fmt=json&api_key=${apiKey}`;
+async function fetchTrims(year, make, model) {
+    const url = `${BASE_URL}?cmd=getTrims&year=${year}&make=${encodeURIComponent(make)}&model=${encodeURIComponent(model)}&sold_in_us=1`;
     const response = await fetch(url);
-    const data = await response.json();
-    return data.years || [];
+    const dataText = await response.text();
+    const data = JSON.parse(dataText.replace(/^\?\(|\);$/g, ''));
+    return data.Trims || [];
 }
 
-async function fetchCarDetails(make, model, year) {
-    const url = `https://api.edmunds.com/api/vehicle/v2/${make}/${model}/${year}?fmt=json&api_key=${apiKey}`;
-    const response = await fetch(url);
-    const data = await response.json();
-    return data;
-}
-
-async function initMakes() {
-    const makes = await fetchMakes();
+yearSelect.addEventListener('change', async () => {
+    const year = yearSelect.value;
+    makeSelect.disabled = true;
+    modelSelect.disabled = true;
+    if (!year) return;
+    makeSelect.innerHTML = `<option value="">Loading makes...</option>`;
+    const makes = await fetchMakes(year);
+    if (makes.length === 0) {
+        makeSelect.innerHTML = `<option value="">No makes found for this year</option>`;
+        return;
+    }
     makeSelect.innerHTML = `<option value="">Select a Make</option>`;
-    makes.forEach(makeObj => {
+    makes.forEach(m => {
         const option = document.createElement('option');
-        option.value = makeObj.niceName;
-        option.textContent = makeObj.name;
+        option.value = m.make_display;
+        option.textContent = m.make_display;
         makeSelect.appendChild(option);
     });
-}
-
-
-makeSelect.addEventListener('change', async () => {
-    const make = makeSelect.value;
-    modelSelect.disabled = true;
-    yearSelect.disabled = true;
-    modelSelect.innerHTML = `<option value="">Loading models...</option>`;
-    if (make) {
-        const models = await fetchModels(make);
-        modelSelect.innerHTML = `<option value="">Select a Model</option>`;
-        models.forEach(modelObj => {
-            const option = document.createElement('option');
-            option.value = modelObj.niceName;
-            option.textContent = modelObj.name;
-            modelSelect.appendChild(option);
-        });
-        modelSelect.disabled = false;
-    }
+    makeSelect.disabled = false;
 });
 
-modelSelect.addEventListener('change', async () => {
+makeSelect.addEventListener('change', async () => {
+    const year = yearSelect.value;
     const make = makeSelect.value;
-    const model = modelSelect.value;
-    yearSelect.disabled = true;
-    yearSelect.innerHTML = `<option value="">Loading years...</option>`;
-    if (model) {
-        const years = await fetchYears(make, model);
-        yearSelect.innerHTML = `<option value="">Select a Year</option>`;
-        years.forEach(yearObj => {
-            const option = document.createElement('option');
-            option.value = yearObj.year;
-            option.textContent = yearObj.year;
-            yearSelect.appendChild(option);
-        });
-        yearSelect.disabled = false;
+    modelSelect.disabled = true;
+    if (!make) return;
+    modelSelect.innerHTML = `<option value="">Loading models...</option>`;
+    const models = await fetchModels(year, make);
+    if (models.length === 0) {
+        modelSelect.innerHTML = `<option value="">No models found</option>`;
+        return;
     }
+    modelSelect.innerHTML = `<option value="">Select a Model</option>`;
+    models.forEach(m => {
+        const option = document.createElement('option');
+        option.value = m.model_name;
+        option.textContent = m.model_name;
+        modelSelect.appendChild(option);
+    });
+    modelSelect.disabled = false;
 });
 
 carForm.addEventListener('submit', async (e) => {
     e.preventDefault();
+    const year = yearSelect.value;
     const make = makeSelect.value;
     const model = modelSelect.value;
-    const year = yearSelect.value;
-    
-    if (!make || !model || !year) return;
 
-    const carDetails = await fetchCarDetails(make, model, year);
+    if (!year || !make || !model) return;
 
-    displayCarDetails(carDetails);
+    const trims = await fetchTrims(year, make, model);
+    if (!trims || trims.length === 0) {
+        carInfoDiv.innerHTML = `<p>No detailed info found.</p>`;
+        resultsSection.classList.remove('hidden');
+        return;
+    }
+
+    const trim = trims[0];
+    displayCarDetails(trim);
 });
 
-function displayCarDetails(details) {
+function displayCarDetails(trim) {
     resultsSection.classList.remove('hidden');
     carInfoDiv.innerHTML = '';
 
-    const { make, model, year, categories, styles } = details;
-
-    let imgSrc = '';
-    if (details.media && details.media.photos && details.media.photos.length > 0) {
-        imgSrc = details.media.photos[0].sources[0].link.href;
+    let imgSrc = trim.model_img || '';
+    if (!imgSrc) {
+        imgSrc = 'https://via.placeholder.com/300x200?text=No+Image+Available';
     }
 
-    if (imgSrc) {
-        const img = document.createElement('img');
-        img.src = imgSrc;
-        img.alt = `${make.name} ${model.name} ${year.year}`;
-        carInfoDiv.appendChild(img);
-    }
+    const img = document.createElement('img');
+    img.src = imgSrc;
+    img.alt = `${trim.model_make_display} ${trim.model_name} ${trim.model_year}`;
+    carInfoDiv.appendChild(img);
 
     const infoList = document.createElement('ul');
     infoList.innerHTML = `
-        <li><strong>Make:</strong> ${make.name}</li>
-        <li><strong>Model:</strong> ${model.name}</li>
-        <li><strong>Year:</strong> ${year.year}</li>
-        <li><strong>Body Type:</strong> ${categories && categories.vehicleStyle ? categories.vehicleStyle : 'N/A'}</li>
-        <li><strong>Engine:</strong> ${styles && styles[0] && styles[0].engine ? styles[0].engine.size + 'L ' + styles[0].engine.type : 'N/A'}</li>
-        <li><strong>Transmission:</strong> ${styles && styles[0] && styles[0].transmission ? styles[0].transmission.name : 'N/A'}</li>
+        <li><strong>Make:</strong> ${trim.model_make_display}</li>
+        <li><strong>Model:</strong> ${trim.model_name}</li>
+        <li><strong>Year:</strong> ${trim.model_year}</li>
+        <li><strong>Body Type:</strong> ${trim.model_body || 'N/A'}</li>
+        <li><strong>Engine:</strong> ${trim.model_engine_cc ? (trim.model_engine_cc + 'cc ' + (trim.model_engine_type || 'Engine')) : 'N/A'}</li>
+        <li><strong>Fuel Type:</strong> ${trim.model_engine_fuel || 'N/A'}</li>
+        <li><strong>Transmission:</strong> ${trim.model_transmission_type || 'N/A'}</li>
+        <li><strong>Drive Type:</strong> ${trim.model_drive || 'N/A'}</li>
+        <li><strong>Horsepower:</strong> ${trim.model_engine_power_ps ? trim.model_engine_power_ps + ' PS' : 'N/A'}</li>
     `;
     carInfoDiv.appendChild(infoList);
 }
-
 
 searchAgainBtn.addEventListener('click', () => {
     resultsSection.classList.add('hidden');
     carInfoDiv.innerHTML = '';
     carForm.reset();
+    makeSelect.disabled = true;
     modelSelect.disabled = true;
-    yearSelect.disabled = true;
 });
 
 compareBtn.addEventListener('click', () => {
     const liItems = carInfoDiv.querySelectorAll('ul li');
     const carData = {};
+
     liItems.forEach(li => {
-        const key = li.innerHTML.split('</strong>')[0].replace('<strong>','').replace(':','').trim();
-        const value = li.innerHTML.split('</strong>')[1].trim();
+        const parts = li.innerHTML.split('</strong>');
+        const key = parts[0].replace('<strong>', '').replace(':', '').trim();
+        const value = parts[1].trim();
         carData[key] = value;
     });
 
@@ -204,5 +211,3 @@ clearCompareBtn.addEventListener('click', () => {
     compareCars = [];
     updateCompareTable();
 });
-
-initMakes();
