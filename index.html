@@ -15,19 +15,19 @@
         <section id="search-section">
             <h2>Find Your Car</h2>
             <form id="car-form">
+                <label for="year-select">Year:</label>
+                <select id="year-select" name="year" required>
+                    <option value="">Loading years...</option>
+                </select>
+
                 <label for="make-select">Make:</label>
-                <select id="make-select" name="make" required>
-                    <option value="">Loading makes...</option>
+                <select id="make-select" name="make" required disabled>
+                    <option value="">Select a year first</option>
                 </select>
                 
                 <label for="model-select">Model:</label>
                 <select id="model-select" name="model" required disabled>
                     <option value="">Select a make first</option>
-                </select>
-                
-                <label for="year-select">Year:</label>
-                <select id="year-select" name="year" required disabled>
-                    <option value="">Select a model first</option>
                 </select>
                 
                 <button type="submit">Search</button>
@@ -50,7 +50,7 @@
     </main>
 
     <footer>
-        <p>Powered by Edmunds API</p>
+        <p>Powered by Car Query API</p>
     </footer>
     
     <script src="script.js"></script>
