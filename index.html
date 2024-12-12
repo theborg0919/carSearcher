@@ -1,58 +1,283 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0"/> 
-    <title>Car Searcher</title>
-    <link rel="stylesheet" href="style.css"/>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Car Info Finder</title>
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        margin: 20px;
+    }
+
+    h1, h2, h3 {
+        margin-top: 0;
+    }
+
+    .form-section {
+        margin-bottom: 20px;
+    }
+
+    select, button {
+        margin-right: 10px;
+        padding: 5px;
+    }
+
+    #car-details {
+        border: 1px solid #ddd;
+        padding: 10px;
+        margin-top: 20px;
+        width: fit-content;
+        max-width: 100%;
+    }
+
+    #car-details h3 {
+        margin-top: 0;
+    }
+
+    #car-details img {
+        max-width: 300px;
+        margin-bottom: 10px;
+    }
+
+    #compare-section {
+        margin-top: 30px;
+    }
+
+    #compare-list {
+        margin-top: 20px;
+    }
+
+    .compare-item {
+        display: inline-block;
+        vertical-align: top;
+        border: 1px solid #ccc;
+        padding: 10px;
+        margin: 5px;
+        width: 250px;
+        box-sizing: border-box;
+    }
+
+    .compare-item img {
+        max-width: 200px;
+        display: block;
+        margin: 0 auto 10px;
+    }
+
+    .compare-title {
+        font-weight: bold;
+        text-align: center;
+        margin-bottom: 10px;
+    }
+
+    .specs-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .specs-table th, .specs-table td {
+        border: 1px solid #ddd;
+        padding: 5px;
+        text-align: left;
+    }
+
+    .specs-table th {
+        background-color: #f0f0f0;
+    }
+
+</style>
 </head>
 <body>
-    <header>
-        <h1>Car Searcher</h1>
-    </header>
-    
-    <main>
-        <section id="search-section">
-            <h2>Find Your Car</h2>
-            <form id="car-form">
-                <label for="year-select">Year:</label>
-                <select id="year-select" name="year" required>
-                    <option value="">Loading years...</option>
-                </select>
 
-                <label for="make-select">Make:</label>
-                <select id="make-select" name="make" required disabled>
-                    <option value="">Select a year first</option>
-                </select>
-                
-                <label for="model-select">Model:</label>
-                <select id="model-select" name="model" required disabled>
-                    <option value="">Select a make first</option>
-                </select>
-                
-                <button type="submit">Search</button>
-            </form>
-        </section>
-        
-        <section id="results-section" class="hidden">
-            <h2>Car Details</h2>
-            <div id="car-info"></div>
-            <button id="compare-button">Add to Compare</button>
-            <button id="search-again">Search Again</button>
-        </section>
-        
-        <section id="compare-section" class="hidden">
-            <h2>Compare Cars</h2>
-            <div id="compare-table-container">
-            </div>
-            <button id="clear-compare">Clear Comparison</button>
-        </section>
-    </main>
+<h1>Car Information Finder</h1>
 
-    <footer>
-        <p>Powered by Car Query API</p>
-    </footer>
+<div class="form-section">
+    <label for="year-select">Year:</label>
+    <select id="year-select"></select>
+
+    <label for="make-select">Make:</label>
+    <select id="make-select"></select>
+
+    <label for="model-select">Model:</label>
+    <select id="model-select"></select>
+
+    <button id="search-btn">Search</button>
+    <button id="reset-btn">Reset</button>
+</div>
+
+<div id="car-details" style="display: none;"></div>
+
+<div id="compare-section">
+    <h2>Compare Cars</h2>
+    <p>Add the current car to the compare list:</p>
+    <button id="add-compare-btn" disabled>Add Current Car to Compare</button>
+    <button id="clear-compare-btn">Clear Compare List</button>
+    <div id="compare-list"></div>
+</div>
+
+<!-- jQuery (for easier AJAX calls and DOM handling) -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<!-- CarQuery API Loader -->
+<script type="text/javascript" src="https://www.carqueryapi.com/js/carquery.0.3.4.js"></script>
+
+<script>
+$(document).ready(function() {
+    var cq = new CarQuery();
+    var selectedYear = null;
+    var selectedMake = null;
+    var selectedModel = null;
+    var currentCarData = null;
+    var compareCars = [];
+
+    // Initialize CarQuery
+    cq.init();
     
-    <script src="script.js"></script>
+    // Get the list of years
+    cq.initYearMakeModelTrim('year-select', 'make-select', 'model-select', '', '', '', '');
+    // Wait until CarQuery is ready
+    cq.setFilters( { sold_in_us: true } );
+    cq.initAll();
+
+    // After CarQuery has loaded makes & models on user selections:
+    $('#year-select').on('change', function() {
+        selectedYear = $(this).val();
+        if(selectedYear) {
+            cq.setFilters({ year: selectedYear, sold_in_us: true });
+            cq.populateMakeDropdown('make-select');
+        }
+    });
+
+    $('#make-select').on('change', function() {
+        selectedMake = $(this).val();
+        if(selectedMake && selectedYear) {
+            cq.setFilters({ year: selectedYear, make: selectedMake, sold_in_us: true });
+            cq.populateModelDropdown('model-select');
+        }
+    });
+
+    $('#model-select').on('change', function() {
+        selectedModel = $(this).val();
+    });
+
+    $('#search-btn').on('click', function() {
+        if(!selectedYear || !selectedMake || !selectedModel) {
+            alert("Please select Year, Make and Model first!");
+            return;
+        }
+
+        // Get trims (which includes specs)
+        $.ajax({
+            url: "https://www.carqueryapi.com/api/0.3/?callback=?",
+            dataType: "json",
+            data: { 
+                cmd: "getTrims", 
+                year: selectedYear, 
+                make: selectedMake, 
+                model: selectedModel 
+            },
+            success: function(data) {
+                var trims = data.Trims;
+                if(trims.length > 0) {
+                    // In many cases, multiple trims available. We'll just take the first for simplicity.
+                    var trim = trims[0];
+                    currentCarData = trim;
+                    displayCarDetails(trim);
+                    $('#add-compare-btn').prop('disabled', false);
+                } else {
+                    alert("No data found for this selection.");
+                }
+            }
+        });
+    });
+
+    $('#reset-btn').on('click', function() {
+        $('#car-details').hide().html('');
+        currentCarData = null;
+        $('#add-compare-btn').prop('disabled', true);
+    });
+
+    $('#add-compare-btn').on('click', function() {
+        if(currentCarData) {
+            compareCars.push(currentCarData);
+            updateCompareSection();
+        }
+    });
+
+    $('#clear-compare-btn').on('click', function() {
+        compareCars = [];
+        updateCompareSection();
+    });
+
+    function displayCarDetails(trim) {
+        var container = $('#car-details');
+        container.empty();
+
+        // Attempt to find an image via DuckDuckGo image search (no API key)
+        // This is just a constructed example. For a real deployment, you'd need a stable image source.
+        // We'll just use a placeholder from placeimg if we fail.
+        var carImageUrl = "https://source.unsplash.com/featured/?"+encodeURIComponent(trim.make_display + " " + trim.model_name + " car");
+
+        var specsTable = `
+        <table class="specs-table">
+            <tr><th>Year</th><td>${trim.model_year}</td></tr>
+            <tr><th>Make</th><td>${trim.make_display}</td></tr>
+            <tr><th>Model</th><td>${trim.model_name}</td></tr>
+            <tr><th>Trim</th><td>${trim.model_trim}</td></tr>
+            <tr><th>Engine Position</th><td>${trim.model_engine_position}</td></tr>
+            <tr><th>Engine Type</th><td>${trim.model_engine_type}</td></tr>
+            <tr><th>Engine CC</th><td>${trim.model_engine_cc}</td></tr>
+            <tr><th>Engine Power (PS)</th><td>${trim.model_engine_power_ps}</td></tr>
+            <tr><th>Engine Torque (NM)</th><td>${trim.model_engine_torque_nm}</td></tr>
+            <tr><th>Body</th><td>${trim.model_body}</td></tr>
+            <tr><th>Doors</th><td>${trim.model_doors}</td></tr>
+            <tr><th>Seats</th><td>${trim.model_seats}</td></tr>
+            <tr><th>Transmission Type</th><td>${trim.model_transmission_type}</td></tr>
+            <tr><th>Drive</th><td>${trim.model_drive}</td></tr>
+            <tr><th>Weight (kg)</th><td>${trim.model_weight_kg}</td></tr>
+        </table>`;
+
+        container.append(`<h3>${trim.make_display} ${trim.model_name} (${trim.model_year})</h3>`);
+        container.append(`<img src="${carImageUrl}" alt="Car Image" onerror="this.onerror=null;this.src='https://placeimg.com/300/200/arch';">`);
+        container.append(specsTable);
+        container.show();
+    }
+
+    function updateCompareSection() {
+        var list = $('#compare-list');
+        list.empty();
+
+        if(compareCars.length === 0) {
+            list.html("<p>No cars to compare.</p>");
+            return;
+        }
+
+        // For side-by-side comparison, we'll display a grid of cars.
+        // If we want to align specs side by side, we could create a more complex table.
+        // For simplicity, just show them individually.
+        compareCars.forEach(function(car, index) {
+            var carImageUrl = "https://source.unsplash.com/featured/?"+encodeURIComponent(car.make_display + " " + car.model_name + " car");
+
+            var specs = `
+            <div class="compare-item">
+                <div class="compare-title">${car.make_display} ${car.model_name} (${car.model_year})</div>
+                <img src="${carImageUrl}" onerror="this.onerror=null;this.src='https://placeimg.com/200/120/arch';">
+                <table class="specs-table">
+                    <tr><th>Trim</th><td>${car.model_trim}</td></tr>
+                    <tr><th>Engine</th><td>${car.model_engine_type}</td></tr>
+                    <tr><th>Power (PS)</th><td>${car.model_engine_power_ps}</td></tr>
+                    <tr><th>Torque (NM)</th><td>${car.model_engine_torque_nm}</td></tr>
+                    <tr><th>Body</th><td>${car.model_body}</td></tr>
+                    <tr><th>Doors</th><td>${car.model_doors}</td></tr>
+                    <tr><th>Seats</th><td>${car.model_seats}</td></tr>
+                    <tr><th>Drive</th><td>${car.model_drive}</td></tr>
+                </table>
+            </div>`;
+
+            list.append(specs);
+        });
+    }
+
+});
+</script>
 </body>
 </html>
